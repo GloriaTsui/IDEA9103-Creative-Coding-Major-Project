@@ -1,5 +1,8 @@
 let radii;//Define an array and use it to store the radii of concentric circles.
 let colorsList = []; // Define a two-dimensional array and use it to store the colours at each position.
+let startColors = {}; // Object to store the initial colors
+let endColors = {}; // Object to store the end colors
+let colorLerpDuration = 100; // Define the duration in frames for the color transition
 
 function setup() {
   let canvas = createCanvas(windowWidth, windowHeight); // Create a canvas that fills the window
@@ -16,7 +19,7 @@ function setup() {
   angleMode(DEGREES);
 
   // Initialize a set of redii for concentric circles
-  radii = [hexagonSize * 0.4, hexagonSize * 0.25, hexagonSize * 0.1];
+  radii = [hexagonSize * 0.32, hexagonSize * 0.18, hexagonSize * 0.1];
   redraw();
 }
 
@@ -94,7 +97,7 @@ function drawTwistedLine(cX, cY, r, col, row) {
       vertex(startX, startY);// Define the start points
       bezierVertex(ControlPoint2x, ControlPoint2y, ControlPoint1x, ControlPoint1y, endX, endY);
       // Define two control points and end points of another Bezier curve,
-      // The order of the control points of this curve is opposite to that of the previous curve to form a staggered line
+      // The order of the control points of this curve is opposite to that of the previous curve to form a twisted line
       endShape();
 
     }
@@ -169,35 +172,48 @@ class ConcentricCirclesAndDots {
   }
 }
 
-// Fill wrapped lines, concentric circles, and dots with random colors:
-// Get the color based on the row and column position of the grid, if no color is stored, generate the color and store it
+// Fill twisted lines, concentric circles, and dots with random colors:
+// Get the color based on the row and column position of the grid
 function getColorsForPosition(row, col) {
-  // If the current row does not store colors, create a new empty list to store the colors
+
   if (!colorsList[row]) colorsList[row] = [];
-  
-  // If there is no color list at the current location, a set of colors is randomly generated and stored
+
+
   if (!colorsList[row][col]) {
-    let colorsForThisSet = [];
-    
-    // Add color to wrapped thread
-    colorsForThisSet.push(color(random(255), random(255), random(255)));
-
-    // Add color to concentric circles
-    for (let r of radii) {
-      colorsForThisSet.push(color(random(255), random(255), random(255)));
-    }
-
-    // Add color to the small dots between concentric circles
-    colorsForThisSet.push(color(random(255), random(255), random(255)));
-    colorsForThisSet.push(color(random(255), random(255), random(255)));
-    colorsForThisSet.push(color(random(255), random(255), random(255)));
-
-    // Store randomly generated colors into a list
-    colorsList[row][col] = colorsForThisSet;
+    // Initialize the colorlist with random colors
+    colorsList[row][col] = generateRandomColors();
+    startColors[`${row},${col}`] = [...colorsList[row][col]]; // Copy initial colors
+    endColors[`${row},${col}`] = generateRandomColors(); // Generate a new set for end colors
   }
 
-  // Return the color list for the current location
+  // Calculate lerp amount within the duration, then adjust the progress of the color transition
+  let lerpAmount = (frameCount % colorLerpDuration) / (colorLerpDuration * 10);
+
+  // Lerp the colors
+  for (let i = 0; i < colorsList[row][col].length; i++) {
+    colorsList[row][col][i] = lerpColor(startColors[`${row},${col}`][i], endColors[`${row},${col}`][i], lerpAmount);
+  }
+
+  // Continuously update the start colors
+  startColors[`${row},${col}`] = [...colorsList[row][col]];
+
+  // If one transition is completed, restart a new transition
+  if (frameCount % colorLerpDuration === 0) {
+    endColors[`${row},${col}`] = generateRandomColors(); // Generate new end colors
+  }
+
+  
   return colorsList[row][col];
+}
+
+// Define a function to generate a set of random colors
+function generateRandomColors() {
+  let colorsForThisSet = [];
+  // Generate colors for twisted lines and concentric circles
+  for (let i = 0; i < radii.length + 4; i++) { // +4 for the lines and the set of three dots
+    colorsForThisSet.push(color(random(255), random(255), random(255)));
+  }
+  return colorsForThisSet;
 }
 
 
@@ -228,7 +244,7 @@ function draw() {
   background(4, 81, 123);//Set canvas color to dark blue
   translate(width / 2, height / 2); // Move the coordinate system to the center of the canvas
   rotate(15);// Rotate the entire canvas 15 degrees to fit the design of the original image
-  stroke(255);// Set the stroke color to white
+  noStroke();
   noFill();
-  makeGrid();// Use the makeGrid function
+  makeGrid();
 }
