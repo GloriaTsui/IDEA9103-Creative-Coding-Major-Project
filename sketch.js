@@ -368,3 +368,5 @@ function draw() {
     balls[i].render();
   }
 }
+
+// This code is debugged by ChatGPT
