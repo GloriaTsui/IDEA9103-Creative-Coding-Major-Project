@@ -3,6 +3,10 @@ let colorsList = []; // Define a two-dimensional array and use it to store the c
 let startColors = {}; // Object to store the initial colors
 let endColors = {}; // Object to store the end colors
 let colorLerpDuration = 100; // Define the duration in frames for the color transition
+let startBackgroundColor; 
+let endBackgroundColor; 
+let backgroundLerpDuration = 8000; // Set an eight seconds duration for background color lerp
+let lastBackgroundLerpTime = 0; // Timestamp of the last background color lerp
 
 function setup() {
   let canvas = createCanvas(windowWidth, windowHeight); // Create a canvas that fills the window
@@ -19,8 +23,12 @@ function setup() {
   angleMode(DEGREES);
 
   // Initialize a set of redii for concentric circles
-  radii = [hexagonSize * 0.32, hexagonSize * 0.18, hexagonSize * 0.1];
+  radii = [hexagonSize * 0.35, hexagonSize * 0.2, hexagonSize * 0.1];
   redraw();
+
+  // Initialize the background color lerp
+  startBackgroundColor = color(random(255), random(255), random(255));
+  endBackgroundColor = color(random(255), random(255), random(255));
 }
 
 // Adjust the size of the canvas when the window is resized
@@ -121,7 +129,7 @@ class DottedCircle {
     this.color = color;
   }
 
-  draw() {
+  draw(rotationAngle) {
     push();
     stroke(this.color);
 
@@ -129,8 +137,8 @@ class DottedCircle {
     //and draw a small dot every 15 degrees to form a ring
     for (let a = 0; a < 360; a += 15) {
       // Use trigonometric functions to calculate the coordinates of the current small circle
-      let x = this.cX + this.r * cos(a);
-      let y = this.cY + this.r * sin(a);
+      let x = this.cX + this.r * cos(a + rotationAngle);
+      let y = this.cY + this.r * sin(a + rotationAngle);
       ellipse(x, y, this.dotRadius, this.dotRadius);
     }
     pop();
@@ -163,10 +171,10 @@ class ConcentricCirclesAndDots {
     let r2 = r1 * 1.15;
     let r3 = r2 * 1.15
 
-    // Draw dotted rings
-    new DottedCircle(this.cX, this.cY, r1, r1 * 0.1, this.colors[4]).draw();
-    new DottedCircle(this.cX, this.cY, r2, r1 * 0.12, this.colors[5]).draw();
-    new DottedCircle(this.cX, this.cY, r3, r1 * 0.13, this.colors[6]).draw();
+    // Draw dotted rings with rotation based on frame count
+    new DottedCircle(this.cX, this.cY, r1, r1 * 0.1, this.colors[4]).draw(frameCount * 0.3);
+    new DottedCircle(this.cX, this.cY, r2, r1 * 0.12, this.colors[5]).draw(frameCount * 0.4);
+    new DottedCircle(this.cX, this.cY, r3, r1 * 0.13, this.colors[6]).draw(frameCount * 0.5); // Set each group of dotted circle a different rotation speed
     
     pop();
   }
@@ -178,7 +186,7 @@ function getColorsForPosition(row, col) {
 
   if (!colorsList[row]) colorsList[row] = [];
 
-
+  
   if (!colorsList[row][col]) {
     // Initialize the colorlist with random colors
     colorsList[row][col] = generateRandomColors();
@@ -202,7 +210,7 @@ function getColorsForPosition(row, col) {
     endColors[`${row},${col}`] = generateRandomColors(); // Generate new end colors
   }
 
-  
+
   return colorsList[row][col];
 }
 
@@ -215,7 +223,6 @@ function generateRandomColors() {
   }
   return colorsForThisSet;
 }
-
 
 function makeGrid() {
   let count = 0;// init counter
@@ -241,10 +248,28 @@ function makeGrid() {
 
 
 function draw() {
-  background(4, 81, 123);//Set canvas color to dark blue
+  // Create background color transition based on time
+  let currentTime = millis();
+  let lerpAmount = (currentTime - lastBackgroundLerpTime) / backgroundLerpDuration;
+
+  // Ensure that lerpAmount does not exceed 1.0
+  lerpAmount = min(lerpAmount, 1.0);
+
+  // Lerp the background color
+  let lerpedBackgroundColor = lerpColor(startBackgroundColor, endBackgroundColor, lerpAmount);
+  background(lerpedBackgroundColor);
+
+  // If lerpAmount reached 1.0, restart background lerp with the end color of last transition
+  if (lerpAmount >= 1.0) {
+    // Reset the lastBackgroundLerpTime and calculate new colors for the next transition
+    lastBackgroundLerpTime = currentTime;
+    startBackgroundColor = endBackgroundColor; // Start color becomes the current background color
+    endBackgroundColor = color(random(255), random(255), random(255)); // Calculate a new end color
+  }
+  
   translate(width / 2, height / 2); // Move the coordinate system to the center of the canvas
   rotate(15);// Rotate the entire canvas 15 degrees to fit the design of the original image
   noStroke();
   noFill();
   makeGrid();
-}
+} 
