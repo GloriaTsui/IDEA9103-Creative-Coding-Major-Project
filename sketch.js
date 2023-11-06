@@ -7,6 +7,7 @@ let startBackgroundColor;
 let endBackgroundColor; 
 let backgroundLerpDuration = 8000; // Set an eight seconds duration for background color lerp
 let lastBackgroundLerpTime = 0; // Timestamp of the last background color lerp
+let balls = []; // Define an array and use it to store instances of the ball class
 
 function setup() {
   let canvas = createCanvas(windowWidth, windowHeight); // Create a canvas that fills the window
@@ -29,6 +30,18 @@ function setup() {
   // Initialize the background color lerp
   startBackgroundColor = color(random(255), random(255), random(255));
   endBackgroundColor = color(random(255), random(255), random(255));
+
+  // Create 50 balls and add them to the 'balls' array
+  for (i = 0; i < 50; i++) {
+    balls.push(new Ball(
+      createVector(random(width),random(height)), // Randomly set the initial positions of the balls
+      p5.Vector.random2D().mult(random(100)), // Randomly set the initial velocity
+      300,
+      color(random(255),random(255),random(255)) // Randomly set the color of the balls
+    ));
+    // Set the stroke weight for each ball to 5
+    balls[i].strokeWeight = 5; 
+  }
 }
 
 // Adjust the size of the canvas when the window is resized
@@ -174,9 +187,78 @@ class ConcentricCirclesAndDots {
     // Draw dotted rings with rotation based on frame count
     new DottedCircle(this.cX, this.cY, r1, r1 * 0.1, this.colors[4]).draw(frameCount * 0.3);
     new DottedCircle(this.cX, this.cY, r2, r1 * 0.12, this.colors[5]).draw(frameCount * 0.4);
-    new DottedCircle(this.cX, this.cY, r3, r1 * 0.13, this.colors[6]).draw(frameCount * 0.5); // Set each group of dotted circle a different rotation speed
+    new DottedCircle(this.cX, this.cY, r3, r1 * 0.13, this.colors[6]).draw(frameCount * 0.5); // Set each ring a different rotation speed
     
     pop();
+  }
+}
+
+// Define a class to draw bouncing balls
+class Ball {
+  // Initialize properties of the ball
+  constructor(pos, vel, radius, color) {
+    this.pos = pos; // Vector to represent position of the ball
+    this.vel = vel; // Vector to represent velocity of the ball
+    this.radius = radius;
+    this.color = color;
+  }
+
+  // Create collisions between balls
+  collide(other) {
+    if (other == this) {
+      return;
+    }
+
+    // Calculate the relative position vector between a ball and the others
+    let relative = p5.Vector.sub(other.pos, this.pos);
+    // Calculate the distance betwween centers of two balls
+    let dist = relative.mag() - (this.radius + other.radius);
+    // Detect the collisions of the balls
+    if (dist < 0) {
+      // Moves the balls apart to finish collision
+      let movement = relative.copy().setMag(abs(dist/4));
+      this.pos.sub(movement);
+      other.pos.add(movement);
+      
+      // Calculate the normal vector pointing from one ball to the others
+      let thisToOtherNormal = relative.copy().normalize();
+      // Calculate the relative approach speed of the two balls
+      let approachSpeed = this.vel.dot(thisToOtherNormal) + -other.vel.dot(thisToOtherNormal);
+      // Calculate the approach vector based on the relative approach speed
+      let approachVector = thisToOtherNormal.copy().setMag(approachSpeed);
+      // Adjust the velocities of the two balls to reflect the collision
+      this.vel.sub(approachVector);
+      other.vel.add(approachVector);
+    }
+  }
+
+  move() {
+    this.pos.add(this.vel); // Add the velocity vector to update the position
+
+    // Check the boundary of the canvas
+    let halfCanvasWidth = width / 2;
+    let halfCanvasHeight = height / 2;
+
+    // Adjust the position based on translation and rotation
+    let rotatedX = this.pos.x * cos(-15) - this.pos.y * sin(-15);
+    let rotatedY = this.pos.x * sin(-15) + this.pos.y * cos(-15);
+
+    if (rotatedX - this.radius < -halfCanvasWidth || rotatedX + this.radius > halfCanvasWidth) {
+    // If the rotated X position is beyond the left or right boundary, let the balls bounce back
+    this.vel.x *= -1;
+    }
+
+    if (rotatedY - this.radius < -halfCanvasHeight || rotatedY + this.radius > halfCanvasHeight) {
+    // If the rotated Y position is beyond the top or bottom boundary, let the balls bounce back
+    this.vel.y *= -1;
+    }
+  }
+  
+  render() {
+    noFill(); 
+  stroke(this.color); // Set random stroke color
+  strokeWeight(this.strokeWeight); // Set the stroke weight
+  ellipse(this.pos.x, this.pos.y, this.radius * 2);
   }
 }
 
@@ -272,4 +354,17 @@ function draw() {
   noStroke();
   noFill();
   makeGrid();
-} 
+
+  // Iterate over the balls array and handle collisions
+  for(let i = 0; i < balls.length; i++) {
+    for(let j = 0; j < i; j++) {
+      balls[i].collide(balls[j]);
+    }
+  }
+  
+  // Move and render each ball in the balls array
+  for(let i = 0; i < balls.length; i++) {
+    balls[i].move();
+    balls[i].render();
+  }
+}
